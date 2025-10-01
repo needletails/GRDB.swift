@@ -9,7 +9,7 @@ import SQLite3
 
 import Foundation
 
-#if !os(Linux) && !os(Windows)
+#if canImport(Darwin)
 /// NSUUID adopts DatabaseValueConvertible
 extension NSUUID: DatabaseValueConvertible {
     /// Returns a BLOB database value containing the uuid bytes.
@@ -32,11 +32,12 @@ extension NSUUID: DatabaseValueConvertible {
     public static func fromDatabaseValue(_ dbValue: DatabaseValue) -> Self? {
         switch dbValue.storage {
         case .blob(let data) where data.count == 16:
-            return data.withUnsafeBytes {
-                self.init(uuidBytes: $0.bindMemory(to: UInt8.self).baseAddress)
+            return data.withUnsafeBytes { rawBuffer in
+                guard let base = rawBuffer.bindMemory(to: UInt8.self).baseAddress else { return nil }
+                return NSUUID(uuidBytes: base) as? Self
             }
         case .string(let string):
-            return self.init(uuidString: string)
+            return NSUUID(uuidString: string) as? Self
         default:
             return nil
         }

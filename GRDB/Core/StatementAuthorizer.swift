@@ -132,10 +132,10 @@ final class StatementAuthorizer {
             // other deletions: `sqlite3_update_hook` does not notify them, and
             // they are prevented when the truncate optimization is disabled.
             // Let's always authorize such deletions by returning SQLITE_OK:
-            guard strcmp(cString1, "sqlite_master") != 0 else { return SQLITE_OK }
-            guard strcmp(cString1, "sqlite_temp_master") != 0 else { return SQLITE_OK }
-            
             let tableName = String(cString: cString1)
+            guard tableName != "sqlite_master" else { return SQLITE_OK }
+            guard tableName != "sqlite_temp_master" else { return SQLITE_OK }
+            
             databaseEventKinds.append(.delete(tableName: tableName))
             
             if let observationBroker = database.observationBroker,
@@ -157,11 +157,12 @@ final class StatementAuthorizer {
             
         case SQLITE_TRANSACTION:
             guard let cString1 else { return SQLITE_OK }
-            if strcmp(cString1, "BEGIN") == 0 {
+            let token = String(cString: cString1)
+            if token == "BEGIN" {
                 transactionEffect = .beginTransaction
-            } else if strcmp(cString1, "COMMIT") == 0 {
+            } else if token == "COMMIT" {
                 transactionEffect = .commitTransaction
-            } else if strcmp(cString1, "ROLLBACK") == 0 {
+            } else if token == "ROLLBACK" {
                 transactionEffect = .rollbackTransaction
             }
             return SQLITE_OK
@@ -169,11 +170,12 @@ final class StatementAuthorizer {
         case SQLITE_SAVEPOINT:
             guard let cString1 else { return SQLITE_OK }
             guard let name = cString2.map(String.init) else { return SQLITE_OK }
-            if strcmp(cString1, "BEGIN") == 0 {
+            let token = String(cString: cString1)
+            if token == "BEGIN" {
                 transactionEffect = .beginSavepoint(name)
-            } else if strcmp(cString1, "RELEASE") == 0 {
+            } else if token == "RELEASE" {
                 transactionEffect = .releaseSavepoint(name)
-            } else if strcmp(cString1, "ROLLBACK") == 0 {
+            } else if token == "ROLLBACK" {
                 transactionEffect = .rollbackSavepoint(name)
             }
             return SQLITE_OK
@@ -190,7 +192,7 @@ final class StatementAuthorizer {
             // See <https://sqlite.org/forum/forumpost/bd47580ec2>
             if sqlite3_libversion_number() < 3038000,
                let cString2,
-               strcmp(cString2, "sqlite_drop_column") == 0
+               String(cString: cString2) == "sqlite_drop_column"
             {
                 invalidatesDatabaseSchemaCache = true
             }

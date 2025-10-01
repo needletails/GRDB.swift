@@ -82,9 +82,9 @@ extension NSNumber: DatabaseValueConvertible {
     public static func fromDatabaseValue(_ dbValue: DatabaseValue) -> Self? {
         switch dbValue.storage {
         case .int64(let int64):
-            return self.init(value: int64)
+            return NSNumber(value: int64) as? Self
         case .double(let double):
-            return self.init(value: double)
+            return NSNumber(value: double) as? Self
         case let .string(string):
             // Must match Decimal.fromDatabaseValue(_:)
             guard let decimal = Decimal(string: string, locale: posixLocale) else { return nil }

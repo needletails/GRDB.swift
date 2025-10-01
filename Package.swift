@@ -27,6 +27,25 @@ if ProcessInfo.processInfo.environment["SPI_BUILDER"] == "1" {
     dependencies.append(.package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"))
 }
 
+
+let sqliteTarget: Target = .target(
+    name: "GRDBSQLite",
+    dependencies: [
+        // On Linux (incl. Android swift-sdk), compile our bundled SQLite
+        .target(name: "CSQLitePlus", condition: .when(platforms: [.linux, .android]))
+    ],
+    path: "Sources/GRDBSQLite",
+    publicHeadersPath: ".",
+    cSettings: cSettings + [
+        // Only needed on Linux where we ship the headers
+        .headerSearchPath("../CSQLitePlus/include", .when(platforms: [.linux, .android]))
+    ],
+    linkerSettings: [
+        // On Apple, link the system-provided sqlite3
+        .linkedLibrary("sqlite3", .when(platforms: [.iOS, .macOS, .tvOS, .watchOS]))
+    ]
+)
+
 let package = Package(
     name: "GRDB",
     defaultLocalization: "en", // for tests
@@ -34,7 +53,7 @@ let package = Package(
         .iOS(.v13),
         .macOS(.v10_15),
         .tvOS(.v13),
-        .watchOS(.v7),
+        .watchOS(.v7)
     ],
     products: [
         .library(name: "GRDBSQLite", targets: ["GRDBSQLite"]),
@@ -43,9 +62,12 @@ let package = Package(
     ],
     dependencies: dependencies,
     targets: [
-        .systemLibrary(
-            name: "GRDBSQLite",
-            providers: [.apt(["libsqlite3-dev"])]),
+       sqliteTarget,
+       .target(
+            name: "CSQLitePlus",
+            path: "Sources/CSQLitePlus",
+            publicHeadersPath: "include"
+        ),
         .target(
             name: "GRDB",
             dependencies: ["GRDBSQLite"],

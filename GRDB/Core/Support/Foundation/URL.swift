@@ -1,12 +1,12 @@
 import Foundation
 
-#if !os(Linux) && !os(Windows)
+#if canImport(Darwin)
 /// NSURL stores its absoluteString in the database.
 extension NSURL: DatabaseValueConvertible {
     
     /// Returns a TEXT database value containing the absolute URL.
     public var databaseValue: DatabaseValue {
-        absoluteString?.databaseValue ?? .null
+        absoluteString.databaseValue
     }
     
     public static func fromDatabaseValue(_ dbValue: DatabaseValue) -> Self? {

@@ -1,0 +1,7 @@
+module CSQLiteGRDB [system] {
+    header "sqlite3.h"
+    header "grdb_config.h"
+    export *
+}
+
+
