@@ -27,21 +27,20 @@ if ProcessInfo.processInfo.environment["SPI_BUILDER"] == "1" {
     dependencies.append(.package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"))
 }
 
-
-let sqliteTarget: Target = .target(
+// Define a single GRDBSQLite target used on all platforms.
+// - On Apple platforms, it links against the system sqlite3 and uses the SDK's headers.
+// - On Android, it depends on the vendored CSQLitePlus and adds its headers to the search path.
+let grdbSQLiteTarget: Target = .target(
     name: "GRDBSQLite",
     dependencies: [
-        // On Linux (incl. Android swift-sdk), compile our bundled SQLite
-        .target(name: "CSQLitePlus", condition: .when(platforms: [.linux, .android]))
+        .target(name: "CSQLitePlus", condition: .when(platforms: [.android]))
     ],
     path: "Sources/GRDBSQLite",
     publicHeadersPath: ".",
     cSettings: cSettings + [
-        // Only needed on Linux where we ship the headers
-        .headerSearchPath("../CSQLitePlus/include", .when(platforms: [.linux, .android]))
+        .headerSearchPath("../CSQLitePlus/include", .when(platforms: [.android]))
     ],
     linkerSettings: [
-        // On Apple, link the system-provided sqlite3
         .linkedLibrary("sqlite3", .when(platforms: [.iOS, .macOS, .tvOS, .watchOS]))
     ]
 )
@@ -56,18 +55,22 @@ let package = Package(
         .watchOS(.v7)
     ],
     products: [
-        .library(name: "GRDBSQLite", targets: ["GRDBSQLite"]),
         .library(name: "GRDB", targets: ["GRDB"]),
         .library(name: "GRDB-dynamic", type: .dynamic, targets: ["GRDB"]),
     ],
     dependencies: dependencies,
     targets: [
-       sqliteTarget,
+       grdbSQLiteTarget,
        .target(
-            name: "CSQLitePlus",
-            path: "Sources/CSQLitePlus",
-            publicHeadersPath: "include"
-        ),
+           name: "CSQLitePlus",
+           path: "Sources/CSQLitePlus",
+           publicHeadersPath: "include",
+           cSettings: [
+               .define("SQLITE_ENABLE_FTS5", .when(platforms: [.android])),
+               .define("SQLITE_ENABLE_JSON1", .when(platforms: [.android])),
+               .define("SQLITE_ENABLE_SNAPSHOT", .when(platforms: [.android]))
+           ]
+       ),
         .target(
             name: "GRDB",
             dependencies: ["GRDBSQLite"],
@@ -107,3 +110,4 @@ let package = Package(
     ],
     swiftLanguageModes: [.v6]
 )
+
